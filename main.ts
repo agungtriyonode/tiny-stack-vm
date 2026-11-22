@@ -14,6 +14,7 @@ function run(p, inp) {
   let cp = 0;
   const M = new Int32Array(256);
   const out = new Uint8Array(65536);
+  const db = new Uint8Array(11);
   let ol = 0;
   let ip = 0;
   let pc = 0;
@@ -170,10 +171,17 @@ function run(p, inp) {
         break;
       }
       case 0x50: {
-        const s = String(D[sp - 1]);
-        if (ol + s.length > 65536) return t(11);
+        // PRINT: decimal straight into `out` (digits reversed into `db`),
+        // no String allocation per call; trap 11 still writes nothing.
+        let v = D[sp - 1];
+        const neg = v < 0;
+        let u = neg ? -v : v;
+        let d = 0;
+        do { db[d++] = 48 + (u % 10); u = (u / 10) | 0; } while (u);
+        if (ol + d + (neg ? 1 : 0) > 65536) return t(11);
         sp--;
-        for (let i = 0; i < s.length; i++) out[ol++] = s.charCodeAt(i);
+        if (neg) out[ol++] = 45;
+        while (d) out[ol++] = db[--d];
         break;
       }
       case 0x51:
